@@ -17,29 +17,56 @@ function migrate_inventory(source, destination)
   end
 end
 
-function reset_concrete(target_surface)
-  local buildable_tiles = {'water'}--for resetting water for offshore pumps
-  for name,tile in pairs(game.tile_prototypes) do
-    if tile.items_to_place_this then
-      --game.print(name)
-      table.insert(buildable_tiles, name)
+local function get_surface_area(edit_surface)
+  local surface_min_x = 0
+  local surface_min_y = 0
+  local surface_max_x = 0
+  local surface_max_y = 0
+  for chunk in edit_surface.get_chunks() do
+    if chunk.x < surface_min_x then
+      surface_min_x = chunk.x
+    end
+    if chunk.y < surface_min_y then
+      surface_min_y = chunk.y
+    end
+    if chunk.x > surface_max_x then
+      surface_max_x = chunk.x
+    end
+    if chunk.y > surface_max_y then
+      surface_max_y = chunk.y
     end
   end
+  local area = {{surface_min_x*32, surface_min_y*32}, {surface_max_x*32, surface_max_y*32}}
+  return area
+end
 
-  local old_tiles = target_surface.find_tiles_filtered(buildable_tiles)
-  local new_tiles = {}
-  for _, t in pairs(old_tiles) do
-    local coord_test = (t.position.x + t.position.y)%2
-    local tile_name = 'lab-white'
-    if (coord_test==0) then
-      tile_name = 'lab-dark-1'
-    else
-      tile_name = 'lab-dark-2'
-    end  
-    table.insert(new_tiles, {name = tile_name, position=t.position})
-  end
-  edit_surface.set_tiles(new_tiles)
-  debug_print('Concrete replaced with lab tiles.')
+local function reset_concrete(target_surface)
+  local surface_area = get_surface_area(target_surface)
+  target_surface.build_checkerboard(surface_area)
+  debug_print('Surface filled with lab tiles.')
+
+  -- local buildable_tiles = {'water'}--for resetting water for offshore pumps
+  -- for name,tile in pairs(game.tile_prototypes) do
+  --   if tile.items_to_place_this then
+  --     --game.print(name)
+  --     table.insert(buildable_tiles, name)
+  --   end
+  -- end
+
+  -- local old_tiles = target_surface.find_tiles_filtered(buildable_tiles)
+  -- local new_tiles = {}
+  -- for _, t in pairs(old_tiles) do
+  --   local coord_test = (t.position.x + t.position.y)%2
+  --   local tile_name = 'lab-white'
+  --   if (coord_test==0) then
+  --     tile_name = 'lab-dark-1'
+  --   else
+  --     tile_name = 'lab-dark-2'
+  --   end  
+  --   table.insert(new_tiles, {name = tile_name, position=t.position})
+  -- end
+  -- edit_surface.set_tiles(new_tiles)
+  -- debug_print('Concrete replaced with lab tiles.')
 end
 
 function set_lab_tiles(target_surface)
@@ -68,7 +95,9 @@ function generate_lab_tile_surface(player, surface_name, surface_size)
     local map_settings = game.surfaces['nauvis'].map_gen_settings
     map_settings.width = 64
     map_settings.height = 64
+
     edit_surface = game.create_surface(surface_name, map_settings)--, map_settings)
+    edit_surface.generate_with_lab_tiles = true
 
     debug_print('Destroyed decoratives.')
   end
@@ -349,29 +378,6 @@ local function fill_in_water(target_surface)
     table.insert(tiles_to_fill, {name = 'blue-refined-concrete', position = tile.position})
   end
   target_surface.set_tiles(tiles_to_fill)
-end
-
-local function get_surface_area(edit_surface)
-  local surface_min_x = 0
-  local surface_min_y = 0
-  local surface_max_x = 0
-  local surface_max_y = 0
-  for chunk in edit_surface.get_chunks() do
-    if chunk.x < surface_min_x then
-      surface_min_x = chunk.x
-    end
-    if chunk.y < surface_min_y then
-      surface_min_y = chunk.y
-    end
-    if chunk.x > surface_max_x then
-      surface_max_x = chunk.x
-    end
-    if chunk.y > surface_max_y then
-      surface_max_y = chunk.y
-    end
-  end
-  local area = {{surface_min_x*32, surface_min_y*32}, {surface_max_x*32, surface_max_y*32}}
-  return area
 end
 
 local function make_edit_surface_big_enough(player, string, edit_surface)
